@@ -13,9 +13,10 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 
 const kennitalaPattern = '^[0-9]{6}-?[0-9]{4}$'
+const todayDate = new Date().toISOString().slice(0,10);
 
 // TODO setja upp rest af virkni!
-function template(nafn = '', kennitala = '', athugasemd = '', fela = ''){
+function template(nafn = '', kennitala = '', athugasemd = '', fela = true){
   return`
   <h1>Undirskriftarlisti</h1>
   <form method="post" action="/post" enctype="application/x-www-form-urlencoded">
@@ -51,15 +52,24 @@ function template(nafn = '', kennitala = '', athugasemd = '', fela = ''){
       </textarea>
     </label>
     </br>
+    <input
+      type="checkbox"
+      name="fela"
+      value="${fela}"
+      id="fela"
+    >
+    <label for="fela">
+      Ekki birta nafn á lista
+    </label>
+    </br>
     <button>Skrifa undir</button>
-  </form>
+    </form>
   `;
 }
 
 app.get('/', (req, res) => {
   res.send(template());
 });
-
 app.post(
   '/post',
 
@@ -68,7 +78,8 @@ app.post(
     .isLength({ min: 1})
     .withMessage('Nafn má ekki vera tómt'),
   body('nafn')
-    .isLength({ max: 64}),
+    .isLength({ max: 128})
+    .withMessage('Nafn má að hámarki vera 128 stafir'),
   body('kennitala')
     .isLength({ min: 1 })
     .withMessage('Kennitala má ekki vera tóm'),
@@ -76,13 +87,15 @@ app.post(
     .matches(new RegExp(kennitalaPattern))
     .withMessage('Kennitala verður að vera á formi 000000-0000 eða 0000000000'),
   body('athugasemd')
-    .isLength({ max: 128 }),
+    .isLength({ max: 400 })
+    .withMessage('Athugasemd má að hámarki vera 400 stafir'),
 
   (req, res, next) => {
     const {
       nafn = '',
       kennitala = '',
       athugasemd = '',
+      fela = false,
     } = req.body;
 
     const errors = validationResult(req);
@@ -90,8 +103,8 @@ app.post(
     if (!errors.isEmpty()) {
       const errorMessages = errors.array().map(i => i.msg);
       return res.send(
-        `${template(nafn, athugasemd, kennitala)}
-        <p>Villur við undirskrift:</p>
+        `${template(nafn, athugasemd, kennitala, fela)}
+        <p><strong>Villur við undirskrift:</strong></p>
         <ul>
           <li>${errorMessages.join('</li><li>')}</li>
         </ul>
@@ -109,25 +122,29 @@ app.post(
 
     const {
       nafn,
-      kennitala,
       athugasemd,
+      fela,
     } = req.body;
 
     return res.send(`
-      <p>Skráning móttekin!</p>
-      <dl>
-        <dt>Nafn</dt>
-        <dd>${nafn}</dd>
-        <dt>Kennitala</dt>
-        <dd>${kennitala}</dd>
-        <dt>Athugasemd</dt>
-        <dd>${athugasemd}</dd>
-      </dl>
+      ${template(nafn, athugasemd, fela)}
+      <table>
+        <tr>
+          <th>Dagsetning</th>
+          <th>Nafn</th>
+          <th>Athugasemd</th>
+        </tr>
+        <tr>
+          <td>${todayDate}</td>
+          <td>${nafn}</td>
+          <td>${athugasemd}</td>
+        </tr>
+      <table>
+      
     `);
   },
 );
 
-// Verðum að setja bara *port* svo virki á heroku
 app.listen(port, () => {
   console.info(`Server running at http://localhost:${port}/`);
 });
