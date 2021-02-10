@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const {
-  PORT: port = 3000,
+  PORT: port = 3001,
 } = process.env;
 
 const app = express();
